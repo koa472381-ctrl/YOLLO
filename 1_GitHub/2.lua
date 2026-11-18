@@ -31,7 +31,7 @@ local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools")
 local KismetSystemLibrary = import("KismetSystemLibrary")
 local packageName = KismetSystemLibrary.GetGameBundleId()
 
-if packageName ~= "com.tencent.ig" and packageName ~= "com.pubg.krmobile" and packageName ~= "com.pubg.imobile" and packageName ~= "com.vng.pubgmobile" and packageName ~= "com.tencent.igfit" then
+if packageName ~= "com.tencent.ig" and packageName ~= "com.pubg.krmobile" and packageName ~= "com.rekoo.pubgm" and packageName ~= "com.vng.pubgmobile" and packageName ~= "com.tencent.igfit" then
     return
 end
     
@@ -510,6 +510,7 @@ pcall(function()
         "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/" .. fileName,
         "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/" .. fileName,
         "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/" .. fileName,
+        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/" .. fileName,                
         "//storage/emulated/0/Android/data/com.tencent.igfit/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/" .. fileName,
         "ShadowTrackerExtra/Saved/SaveGames/" .. fileName,
         "../../ShadowTrackerExtra/Saved/SaveGames/" .. fileName,
@@ -606,6 +607,7 @@ end
 local function GetConfigPaths(fileName)
     local paths = {
         "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,                
         "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
