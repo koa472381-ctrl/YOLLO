@@ -457,7 +457,7 @@ local GLOBAL_BONE_LIST = {
 local GLOBAL_BONE_LIST_LOW = { "head", "pelvis", "neck_01" }
 
 _G.BNTMODConfig = _G.BNTMODConfig or { 
-    EspVip = false, UnlockFPS = false, IpadView = false, EspStatic = false,
+    EspVip = false, UnlockFPS = false, EspLuckyEgg = false, IpadView = false, EspStatic = false,
     EspEnemyCount = false, EspWeaponStatus = false,
     CustomAimbot = false, CustomAimbotClose = false, 
     CustomHRecoil = false, CustomVRecoil = false, LessShake = false, 
@@ -737,6 +737,7 @@ function _G.InitModMenuTab()
         
         local StackIteam = {
             { Key = "ModMenu_ESP1", UI = AliasMap.TitleSwitcher, Text = "▶ ESP (AUTO SETUP)", GetFunc = function() return _G.BNTMODConfig.EspVip end, SetFunc = function(c,v) _G.BNTMODConfig.EspVip = v return true end },
+            { Key = "ModMenu_EspLuckyEgg", UI = AliasMap.TitleSwitcher, Text = "▶ LUCKY EGG ESP", GetFunc = function() return _G.BNTMODConfig.EspLuckyEgg end, SetFunc = function(c,v) _G.BNTMODConfig.EspLuckyEgg = v if not v then _G.CachedLuckyEggs = {} else _G.LastScanLuckyEggTime = 0 end return true end },
             { Key = "ModMenu_EspStatic_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ PLAYER INFO", ExpandIndex = 0, GetFunc = function() return _G.BNTMODConfig.EspStatic end, SetFunc = function(c,v) _G.BNTMODConfig.EspStatic = v return true end },
             { Key = "ModMenu_EspEnemyCount", UI = AliasMap.Switcher, Text = "   ESP ENEMY COUNT", ExpandHandle = "ModMenu_EspStatic_Ex", GetFunc = function() return _G.BNTMODConfig.EspEnemyCount end, SetFunc = function(c,v) _G.BNTMODConfig.EspEnemyCount = v return true end },
             { Key = "ModMenu_EspWeaponStatus", UI = AliasMap.Switcher, Text = "   ESP WEAPON & STATUS ENEMY", ExpandHandle = "ModMenu_EspStatic_Ex", GetFunc = function() return _G.BNTMODConfig.EspWeaponStatus end, SetFunc = function(c,v) _G.BNTMODConfig.EspWeaponStatus = v return true end },
@@ -1547,6 +1548,146 @@ local function MainLoop()
             end
         end
     end)
+
+-- ============================================================
+-- LUCKY EGG ESP SYSTEM
+-- ============================================================
+_G.RealNow = _G.RealNow or function() return os.clock() end
+_G.LastScanLuckyEggTime = _G.LastScanLuckyEggTime or 0
+_G.CachedLuckyEggs = _G.CachedLuckyEggs or {}
+_G.LuckyEggESP_MaxLabels = _G.LuckyEggESP_MaxLabels or 40
+
+local C_EGG = { R = 255, G = 165, B = 0, A = 255 }
+local LuckyEggDatabase = {
+    [2230001] = { name = "Lv. 1 Lucky Egg", color = C_EGG },
+    [2230002] = { name = "Lv. 2 Lucky Egg", color = C_EGG },
+    [2230003] = { name = "Lv. 3 Lucky Egg", color = C_EGG },
+    [2230004] = { name = "Lv. 4 Lucky Egg", color = C_EGG },
+}
+
+local function isPickedUp(item)
+    if not item or not slua.isValid(item) then return true end
+    if item.bHidden then return true end
+    local picked = false
+    pcall(function()
+        if item.bPickedUp == true then picked = true end
+        if item.bIsPickedUp == true then picked = true end
+        if item.PickUpState ~= nil and item.PickUpState ~= 0 then picked = true end
+        if item.IsPendingKill and item:IsPendingKill() then picked = true end
+        if item.Owner and slua.isValid(item.Owner) then picked = true end
+    end)
+    return picked
+end
+
+_G.RunLuckyEggESP = function(pc)
+    if not _G.BNTMODConfig.EspLuckyEgg then
+        _G.CachedLuckyEggs = {}
+        return
+    end
+    local curTime = _G.RealNow()
+    if curTime - (_G.LastScanLuckyEggTime or 0) < 0.3 then return end
+    _G.LastScanLuckyEggTime = curTime
+
+    local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"]
+        or require("GameLua.GameCore.Data.GameplayData")
+    local player = GameplayData and GameplayData.GetPlayerCharacter
+        and GameplayData.GetPlayerCharacter()
+    if not player or not slua.isValid(player) then return end
+
+    local APickUp = import("PickUpWrapperActor") or import("STPickupWrapperActor")
+    if not APickUp then return end
+    local Actors = Game and Game.GetActorsByClass and Game:GetActorsByClass(APickUp)
+    if not Actors then return end
+
+    local candidates = {}
+    local count = (Actors.Num and Actors:Num()) or 0
+    for i = 0, count - 1 do
+        local item = Actors:Get(i)
+        if slua.isValid(item) and not item.bHidden then
+            local itemId = nil
+            if item.DefineID and item.DefineID.TypeSpecificID then
+                itemId = item.DefineID.TypeSpecificID
+            elseif item.DefineId then
+                itemId = item.DefineId
+            end
+            local data = itemId and LuckyEggDatabase[itemId]
+            if data and not isPickedUp(item) then
+                local dist = 0
+                pcall(function() dist = player:GetDistanceTo(item) end)
+                candidates[#candidates + 1] = {
+                    act = item,
+                    name = data.name,
+                    color = data.color,
+                    d = dist or 0,
+                    off = { X = 0, Y = 0, Z = 40 },
+                }
+            end
+        end
+    end
+    table.sort(candidates, function(a, b) return (a.d or 0) < (b.d or 0) end)
+
+    local newList = {}
+    local maxN = _G.LuckyEggESP_MaxLabels or 40
+    for i = 1, math.min(#candidates, maxN) do
+        newList[i] = candidates[i]
+    end
+    _G.CachedLuckyEggs = newList
+end
+
+_G.DrawLuckyEggESP = function(pc)
+    if not _G.BNTMODConfig.EspLuckyEgg then return end
+    local list = _G.CachedLuckyEggs
+    if not list or #list == 0 then return end
+
+    local MyHUD = nil
+    pcall(function()
+        if pc and pc.MyHUD then MyHUD = pc.MyHUD end
+        if not MyHUD and slua_GameFrontendHUD then
+            local c = slua_GameFrontendHUD:GetPlayerController()
+            if c and c.MyHUD then MyHUD = c.MyHUD end
+        end
+    end)
+    if not MyHUD or not MyHUD.AddDebugText then return end
+
+    for _, it in ipairs(list) do
+        if not isPickedUp(it.act) then
+            local distM = (it.d or 0) / 100
+            local grouped = math.floor(distM / 10) * 10
+            local scale = math.max(0.7, 1.2 - (grouped / 400))
+            local text = string.format("%s [%dm]", it.name, math.floor(distM))
+            local col = it.color or C_EGG
+            pcall(function()
+                MyHUD:AddDebugText(
+                    text, it.act,
+                    0.06,
+                    it.off or { X = 0, Y = 0, Z = 40 },
+                    it.off or { X = 0, Y = 0, Z = 40 },
+                    col, true, false, true, nil, scale, true
+                )
+            end)
+        end
+    end
+end
+
+_G.StartLuckyEggESPLoop = function()
+    if _G._LuckyEggESPLoopRunning then return end
+    _G._LuckyEggESPLoopRunning = true
+    local ok, ticker = pcall(require, "common.time_ticker")
+    if not (ok and ticker and ticker.AddTimerLoop) then return end
+
+    ticker.AddTimerLoop(0, function()
+        pcall(function()
+            local GD = package.loaded["GameLua.GameCore.Data.GameplayData"]
+                or require("GameLua.GameCore.Data.GameplayData")
+            local pc = GD and GD.GetPlayerController and GD.GetPlayerController()
+            _G.RunLuckyEggESP(pc)
+            _G.DrawLuckyEggESP(pc)
+        end)
+    end, -1, 0.01)
+end
+
+pcall(_G.StartLuckyEggESPLoop)
+print("LUCKY EGG ESP LOADED")
     
     pcall(function()
         local weapon = nil
